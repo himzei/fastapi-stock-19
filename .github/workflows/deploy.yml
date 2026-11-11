@@ -1,0 +1,35 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        run: |
+          ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }} 'bash -s' <<'EOF'
+          set -e
+          cd ~/fastapi-stock-19
+          git fetch origin master
+          git reset --hard origin/master
+          uv sync --frozen
+          sudo systemctl restart fastapi-stock
+          sleep 5
+          systemctl is-active fastapi-stock
+          curl -sf http://127.0.0.1:8000/ > /dev/null && echo "Health check OK"
+          EOF

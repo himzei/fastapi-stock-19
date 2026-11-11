@@ -8,7 +8,7 @@ app = FastAPI()
 
 @app.get("/")
 def read_home():
-    return {"hello": "world"}
+    return {"hello": "world2"}
 
 
 @app.get("/samsung")
