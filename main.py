@@ -2,8 +2,19 @@ from datetime import datetime, timedelta
 
 import FinanceDataReader as fdr
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://fastapi-stock-react-19-orcin.vercel.app",
+        "http://localhost:5173",  # 로컬 개발용 (Vite)
+    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
