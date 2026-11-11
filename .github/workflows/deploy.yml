@@ -14,15 +14,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up SSH key
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
+          HOST="$(echo "$EC2_HOST" | tr -d '[:space:]')"
+          if [ -z "$HOST" ]; then echo "::error::EC2_HOST secret이 비어 있습니다."; exit 1; fi
+          if [ -z "$EC2_SSH_KEY" ]; then echo "::error::EC2_SSH_KEY secret이 비어 있습니다."; exit 1; fi
+          echo "EC2_HOST=$HOST" >> "$GITHUB_ENV"
+
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$EC2_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null || { echo "::error::EC2_SSH_KEY 형식이 올바르지 않습니다. .pem 파일 전체를 붙여넣으세요."; exit 1; }
+          ssh-keyscan -T 15 "$HOST" >> ~/.ssh/known_hosts || { echo "::error::$HOST:22 에 접속할 수 없습니다."; exit 1; }
 
       - name: Deploy
         run: |
-          ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }} 'bash -s' <<'EOF'
+          ssh -i ~/.ssh/deploy_key ubuntu@"$EC2_HOST" 'bash -s' <<'EOF'
           set -e
           cd ~/fastapi-stock-19
           git fetch origin master
